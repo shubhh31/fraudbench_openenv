@@ -2,7 +2,6 @@ import random
 import uuid
 from fraudbench_openenv.models import Observation, Action, Transaction
 
-
 class FraudBenchOpenenvEnvironment:
     def __init__(self):
         self.current_case = None
@@ -27,39 +26,7 @@ class FraudBenchOpenenvEnvironment:
                 },
                 "history_summary": "User usually spends $20-$80 on groceries locally.",
                 "expected_decision": "deny",
-            },
-            {
-                "case_id": "case_002",
-                "transaction": {
-                    "transaction_id": "tx_1002",
-                    "amount": 42.5,
-                    "merchant": "NeighborhoodMart",
-                    "category": "groceries",
-                    "timestamp": "2026-04-01T18:20:00Z",
-                    "user_id": "u_002",
-                    "device_id": "known_device_abc",
-                    "ip_address": "73.44.120.8",
-                    "location": "home-city",
-                },
-                "history_summary": "Pattern matches normal weekday grocery purchases.",
-                "expected_decision": "approve",
-            },
-            {
-                "case_id": "case_003",
-                "transaction": {
-                    "transaction_id": "tx_1003",
-                    "amount": 1200.0,
-                    "merchant": "FlyNow Airlines",
-                    "category": "travel",
-                    "timestamp": "2026-04-02T05:50:00Z",
-                    "user_id": "u_003",
-                    "device_id": "known_device_travel",
-                    "ip_address": "66.31.77.9",
-                    "location": "new-city",
-                },
-                "history_summary": "User occasionally books travel, amount slightly above average.",
-                "expected_decision": "escalate",
-            },
+            }
         ]
 
     def _obs(self, reward: float = 0.0, done: bool = False, info=None) -> Observation:
@@ -121,6 +88,5 @@ class FraudBenchOpenenvEnvironment:
 
     async def step_async(self, action: Action) -> Observation:
         return self.step(action)
-
 
 FraudbenchOpenenvEnvironment = FraudBenchOpenenvEnvironment
