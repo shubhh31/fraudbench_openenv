@@ -1,7 +1,6 @@
 import random
 import uuid
-from fraudbench_openenv.models import Observation, Action, Transaction
-
+from models import Observation, Action, Transaction
 class FraudBenchOpenenvEnvironment:
     def __init__(self):
         self.current_case = None

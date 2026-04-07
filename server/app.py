@@ -1,36 +1,34 @@
-# Copyright (c) Meta Platforms, Inc. and affiliates.
-# All rights reserved.
-#
-# This source code is licensed under the BSD-style license found in the
-# LICENSE file in the root directory of this source tree.
+from fastapi import FastAPI
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel
 
-"""
-FastAPI application for the Fraudbench Openenv Environment.
-"""
+from models import Action
+from server.fraudbench_openenv_environment import FraudBenchOpenenvEnvironment
 
-try:
-    from openenv.core.env_server.http_server import create_app
-except Exception as e:  # pragma: no cover
-    raise ImportError(
-        "openenv is required for the web interface. Install dependencies with '\n    uv sync\n'"
-    ) from e
+app = FastAPI()
+env = FraudBenchOpenenvEnvironment()
 
-from fraudbench_openenv.models import Action, Observation
-from fraudbench_openenv.server.fraudbench_openenv_environment import (
-    FraudBenchOpenenvEnvironment,
-)
 
-app = create_app(
-    FraudBenchOpenenvEnvironment,
-    Action,
-    Observation,
-    env_name="fraudbench_openenv",
-    max_concurrent_envs=1,
-)
+def to_dict(obj):
+    if hasattr(obj, "model_dump"):
+        return obj.model_dump()
+    if hasattr(obj, "dict"):
+        return obj.dict()
+    return obj
 
-def main(host: str = "0.0.0.0", port: int = 8000):
-    import uvicorn
-    uvicorn.run(app, host=host, port=port)
 
-if __name__ == "__main__":
-    main()
+@app.get("/health")
+def health():
+    return {"status": "ok"}
+
+
+@app.post("/reset")
+def reset():
+    obs = env.reset()
+    return JSONResponse(content=to_dict(obs))
+
+
+@app.post("/step")
+def step(action: Action):
+    obs = env.step(action)
+    return JSONResponse(content=to_dict(obs))
