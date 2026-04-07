@@ -1,6 +1,6 @@
 import random
 import uuid
-from models import Observation, Action, Transaction
+from fraudbench_openenv.models import Observation, Action, Transaction
 
 
 class FraudBenchOpenenvEnvironment:
