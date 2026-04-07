@@ -15,9 +15,10 @@ except Exception as e:  # pragma: no cover
         "openenv is required for the web interface. Install dependencies with '\n    uv sync\n'"
     ) from e
 
-from models import Action, Observation
-from server.fraudbench_openenv_environment import FraudBenchOpenenvEnvironment
-
+from fraudbench_openenv.models import Action, Observation
+from fraudbench_openenv.server.fraudbench_openenv_environment import (
+    FraudBenchOpenenvEnvironment,
+)
 
 app = create_app(
     FraudBenchOpenenvEnvironment,
@@ -30,6 +31,7 @@ app = create_app(
 
 def main(host: str = "0.0.0.0", port: int = 8000):
     import uvicorn
+
     uvicorn.run(app, host=host, port=port)
 
 
