@@ -1,71 +1,90 @@
+import json
 import os
 import sys
-from typing import Optional
+import traceback
 
 from openai import OpenAI, OpenAIError
 
-DEFAULT_API_BASE_URL = "https://api.openai.com/v1"
-DEFAULT_MODEL_NAME = "gpt-4o-mini"
+from models import Action
+from server.fraudbench_openenv_environment import FraudBenchOpenenvEnvironment
+
+API_BASE_URL = os.getenv("API_BASE_URL", "https://api.openai.com/v1")
+MODEL_NAME = os.getenv("MODEL_NAME", "gpt-4.1-mini")
+HF_TOKEN = os.getenv("HF_TOKEN")
+
+if HF_TOKEN is None:
+    raise ValueError("HF_TOKEN environment variable is required")
+
+client = OpenAI(base_url=API_BASE_URL, api_key=HF_TOKEN)
 
 
-def get_env_vars() -> tuple[str, str, str]:
-    api_base_url = os.getenv("API_BASE_URL", DEFAULT_API_BASE_URL)
-    model_name = os.getenv("MODEL_NAME", DEFAULT_MODEL_NAME)
-    hf_token = os.getenv("HF_TOKEN")
-    if not hf_token:
-        raise EnvironmentError(
-            "HF_TOKEN environment variable is required and must be set."
-        )
-    return api_base_url, model_name, hf_token
-
-
-def create_openai_client(api_base_url: str, hf_token: str) -> OpenAI:
-    return OpenAI(api_key=hf_token, base_url=api_base_url)
-
-
-def validate_token(client: OpenAI) -> None:
+def make_chat_completion(model_name: str, prompt: str) -> str:
     try:
-        client.models.list()
+        completion = client.chat.completions.create(
+            model=model_name,
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=64,
+            temperature=0.0,
+        )
+        return completion.choices[0].message.content.strip()
     except OpenAIError as exc:
-        raise RuntimeError(
-            "HF_TOKEN validation failed. Please verify HF_TOKEN is set and valid."
-        ) from exc
+        message = str(exc)
+        if "model" in message.lower() and "not found" in message.lower():
+            if model_name != "gpt-4o-mini":
+                return make_chat_completion("gpt-4o-mini", prompt)
+        raise
 
 
-def generate_response(client: OpenAI, model_name: str, prompt: str) -> str:
-    completion = client.chat.completions.create(
-        model=model_name,
-        messages=[{"role": "user", "content": prompt}],
-        max_tokens=256,
+def choose_decision() -> str:
+    prompt = (
+        "You are a fraud decision assistant. Reply with exactly one word: approve, deny, or escalate. "
+        "Do not include any other text."
     )
+    content = make_chat_completion(MODEL_NAME, prompt).lower()
+    for token in ["approve", "deny", "escalate"]:
+        if token in content:
+            return token
+    return "approve"
 
-    message = completion.choices[0].message
-    if message is None:
-        return ""
-    return message.content
 
-
-def run_demo(prompt: Optional[str] = None) -> int:
-    api_base_url, model_name, hf_token = get_env_vars()
-    client = create_openai_client(api_base_url, hf_token)
-    validate_token(client)
-
-    prompt = prompt or "Hello from OpenEnv demo. Please reply with a short confirmation."
-    output = generate_response(client, model_name, prompt)
-
+def main() -> int:
     print("[START]")
-    print("[STEP] prompt_sent")
-    print(output)
-    print("[END]")
-    return 0
+    reward = 0.0
+    done = False
+    success = False
+    error_value = None
+
+    try:
+        env = FraudBenchOpenenvEnvironment()
+        env.reset()
+
+        decision = choose_decision()
+        action = Action(decision=decision, reason="auto decision")
+        observation = env.step(action)
+
+        reward = float(observation.reward)
+        done = bool(observation.done)
+        success = True
+
+        print("[STEP] env.step")
+        print(f"reward: {reward:.2f}")
+        print(f"done: {str(done).lower()}")
+        print(f"success: {str(success).lower()}")
+        print("error: null")
+        return 0
+    except Exception as exc:
+        error_value = str(exc)
+        tb = traceback.format_exc()
+        print("[STEP] error")
+        print(f"reward: {reward:.2f}")
+        print(f"done: {str(done).lower()}")
+        print(f"success: {str(success).lower()}")
+        print(f"error: {json.dumps(error_value)}")
+        print(f"traceback: {json.dumps(tb)}")
+        return 1
+    finally:
+        print("[END]")
 
 
 if __name__ == "__main__":
-    try:
-        sys.exit(run_demo())
-    except Exception as exc:
-        print("[START]")
-        print("[STEP] error")
-        print(str(exc))
-        print("[END]")
-        sys.exit(1)
+    sys.exit(main())
