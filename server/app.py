@@ -9,12 +9,16 @@ env = FraudBenchOpenenvEnvironment()
 
 
 def _to_dict(obj):
+    """Recursively convert Pydantic models to dicts"""
+    if isinstance(obj, dict):
+        return {k: _to_dict(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [_to_dict(item) for item in obj]
     if hasattr(obj, "model_dump"):
-        return obj.model_dump()
+        return _to_dict(obj.model_dump())
     if hasattr(obj, "dict"):
-        return obj.dict()
+        return _to_dict(obj.dict())
     return obj
-
 
 @app.get("/health")
 def health():
