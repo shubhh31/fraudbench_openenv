@@ -20,6 +20,7 @@ def _to_dict(obj):
         return _to_dict(obj.dict())
     return obj
 
+
 @app.get("/health")
 def health():
     return {"status": "ok"}
@@ -28,7 +29,7 @@ def health():
 @app.post("/reset")
 def reset():
     obs = env.reset()
-    return JSONResponse(content=_to_dict(obs))
+    return JSONResponse(content=_to_dict(obs))      
 
 
 @app.post("/step")
