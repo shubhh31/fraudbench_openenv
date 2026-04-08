@@ -1,38 +1,17 @@
-from fastapi import FastAPI
-from fastapi.responses import JSONResponse
-
-from models import Action
+from openenv.core.env_server import create_app
+from models import Action, Observation
 from server.fraudbench_openenv_environment import FraudBenchOpenenvEnvironment
 
-app = FastAPI()
-env = FraudBenchOpenenvEnvironment()
+
+# Create the FastAPI app using OpenEnv's create_app
+app = create_app(
+    env=FraudBenchOpenenvEnvironment,  # Environment class (factory)
+    action_cls=Action,
+    observation_cls=Observation,
+)
 
 
-def _to_dict(obj):
-    """Recursively convert Pydantic models to dicts"""
-    if isinstance(obj, dict):
-        return {k: _to_dict(v) for k, v in obj.items()}
-    if isinstance(obj, (list, tuple)):
-        return [_to_dict(item) for item in obj]
-    if hasattr(obj, "model_dump"):
-        return _to_dict(obj.model_dump())
-    if hasattr(obj, "dict"):
-        return _to_dict(obj.dict())
-    return obj
-
-
-@app.get("/health")
-def health():
-    return {"status": "ok"}
-
-
-@app.post("/reset")
-def reset():
-    obs = env.reset()
-    return JSONResponse(content=_to_dict(obs))      
-
-
-@app.post("/step")
-def step(action: Action):
-    obs = env.step(action)
-    return JSONResponse(content=_to_dict(obs))
+def main():
+    """Entry point for running the server."""
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
